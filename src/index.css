@@ -101,3 +101,19 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Fix for PDF generation */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  .resume-preview, .resume-preview * {
+    visibility: visible;
+  }
+  .resume-preview {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+  }
+}

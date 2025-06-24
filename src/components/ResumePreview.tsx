@@ -5,6 +5,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { ResumeData } from '@/hooks/useResumeData';
 import { Download, FileText, Eye, Palette, Briefcase, User } from 'lucide-react';
 
+import { useRef } from 'react';
+import { jsPDF } from 'jspdf';
+import html2canvas from 'html2canvas';
+
 interface ResumePreviewProps {
   data: ResumeData;
   onUpdate: (section: keyof ResumeData, data: any) => void;
@@ -16,11 +20,39 @@ type TemplateType = 'modern' | 'classic' | 'creative' | 'minimal';
 
 export const ResumePreview: React.FC<ResumePreviewProps> = ({ data }) => {
   const [selectedTemplate, setSelectedTemplate] = useState<TemplateType>('modern');
+  const resumeRef = useRef<HTMLDivElement>(null); // <-- Add this line
 
-  const handleDownloadPDF = () => {
-    console.log(`PDF download clicked with ${selectedTemplate} template`);
-    // TODO: Implement PDF generation with selected template
-  };
+  const handleDownloadPDF = async () => {
+  if (!resumeRef.current) return;
+
+  try {
+    // Step 1: Convert the resume to an image
+    const canvas = await html2canvas(resumeRef.current, {
+      scale: 2, // Higher quality
+      logging: false, // Disable console logs
+      useCORS: true, // Allow cross-origin images (if any)
+    });
+
+    // Step 2: Create a PDF
+    const pdf = new jsPDF('p', 'mm', 'a4'); // Portrait, millimeters, A4 size
+    const imgData = canvas.toDataURL('image/png'); // Image data URL
+
+    // Calculate dimensions to fit PDF
+    const pdfWidth = pdf.internal.pageSize.getWidth();
+    const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+
+    // Step 3: Add the image to the PDF
+    pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+
+    // Step 4: Generate a filename
+    const name = data.personalInfo.fullName?.replace(/\s+/g, '_') || 'resume';
+    pdf.save(`${name}_${selectedTemplate}_resume.pdf`); // Auto-downloads
+
+  } catch (error) {
+    console.error('PDF generation failed:', error);
+    alert('Failed to generate PDF. Please try again.');
+  }
+};
 
   const formatDate = (dateStr: string) => {
     if (!dateStr) return '';
@@ -519,14 +551,15 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({ data }) => {
         </div>
       </div>
 
-      {renderTemplate()}
+      <div ref={resumeRef}>
+        {renderTemplate()}
+      </div>
 
       {isEmpty && (
         <div className="text-center py-12">
           <FileText className="h-16 w-16 text-slate-400 mx-auto mb-4" />
           <p className="text-slate-500 text-lg">Your professional resume preview will appear here</p>
           <p className="text-sm text-slate-400 mt-2">Complete the previous steps to see your resume come to life</p>
-          <p className="text-sm text-slate-400 mt-4">Built with ❤️ by Lovable</p>
         </div>
       )}
     </div>
